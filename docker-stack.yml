@@ -118,16 +118,23 @@ volumes:
 
 networks:
   frontend-net:
+    name: streamroom-swarm-frontend-net
     driver: overlay
     attachable: true
+
   backend-net:
+    name: streamroom-swarm-backend-net
     driver: overlay
     internal: true
     attachable: true
+
   gateway-net:
+    name: streamroom-swarm-gateway-net
     driver: overlay
     attachable: true
+
   owncast-net:
+    name: streamroom-swarm-owncast-net
     driver: overlay
     attachable: true
 

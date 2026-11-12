@@ -62,11 +62,28 @@ try {
     }
 
     $nodeName = & docker info --format '{{.Name}}'
-    $nodeLabel = & docker node inspect $nodeName --format '{{ index .Spec.Labels "streamroom.storage" }}' 2>$null
-    if ($nodeLabel -ne "true") {
-        Write-Host "Пометка узла для хранения данных PostgreSQL и Owncast..." -ForegroundColor Cyan
-        Invoke-Docker node update --label-add streamroom.storage=true $nodeName
+
+$nodeLabelsJson = & docker node inspect $nodeName --format '{{json .Spec.Labels}}' 2>$null
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Не удалось прочитать метки Docker Swarm узла."
+}
+
+$nodeLabels = $nodeLabelsJson | ConvertFrom-Json
+$nodeLabel = $null
+
+if ($null -ne $nodeLabels) {
+    $labelProperty = $nodeLabels.PSObject.Properties['streamroom.storage']
+
+    if ($null -ne $labelProperty) {
+        $nodeLabel = [string]$labelProperty.Value
     }
+}
+
+if ($nodeLabel -ne "true") {
+    Write-Host "Пометка узла для хранения данных PostgreSQL и Owncast..." -ForegroundColor Cyan
+    Invoke-Docker node update --label-add streamroom.storage=true $nodeName
+}
 
     $secretName = "streamroom_db_password"
     $existingSecrets = & docker secret ls --format '{{.Name}}'
