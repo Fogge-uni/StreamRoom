@@ -1,0 +1,102 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    networks:
+      - frontend-net
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_HOST: database
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-streamroom}
+      DATABASE_USER: ${POSTGRES_USER:-streamroom}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local_streamroom_password}
+      OWNCAST_PUBLIC_URL: ${OWNCAST_PUBLIC_URL:-http://localhost:8081}
+      OWNCAST_INTERNAL_URL: http://owncast:8080
+      CHANNEL_TITLE: ${CHANNEL_TITLE:-StreamRoom — прямой эфир}
+      CHANNEL_DESCRIPTION: ${CHANNEL_DESCRIPTION:-Один общий канал для прямых трансляций.}
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 20s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    networks:
+      - backend-net
+      - gateway-net
+      - owncast-net
+
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-streamroom}
+      POSTGRES_USER: ${POSTGRES_USER:-streamroom}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_streamroom_password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-net
+
+  owncast:
+    image: owncast/owncast:0.3.0
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+      - "1935:1935"
+    volumes:
+      - owncast-data:/app/data
+    networks:
+      - owncast-net
+
+  gateway:
+    build:
+      context: ./gateway
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/gateway-health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    networks:
+      - frontend-net
+      - gateway-net
+
+volumes:
+  postgres-data:
+  owncast-data:
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+    internal: true
+  gateway-net:
+    driver: bridge
+  owncast-net:
+    driver: bridge

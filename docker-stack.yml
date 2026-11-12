@@ -1,0 +1,137 @@
+version: "3.8"
+
+services:
+  frontend:
+    image: ${FRONTEND_IMAGE:-streamroom-frontend:local}
+    networks:
+      - frontend-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+
+  backend:
+    image: ${BACKEND_IMAGE:-streamroom-backend:local}
+    environment:
+      DATABASE_HOST: database
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-streamroom}
+      DATABASE_USER: ${POSTGRES_USER:-streamroom}
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+      OWNCAST_PUBLIC_URL: ${OWNCAST_PUBLIC_URL:-http://localhost:8081}
+      OWNCAST_INTERNAL_URL: http://owncast:8080
+      CHANNEL_TITLE: ${CHANNEL_TITLE:-StreamRoom — прямой эфир}
+      CHANNEL_DESCRIPTION: ${CHANNEL_DESCRIPTION:-Один общий канал для прямых трансляций.}
+    secrets:
+      - source: db_password
+        target: db_password
+    networks:
+      - backend-net
+      - gateway-net
+      - owncast-net
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-streamroom}
+      POSTGRES_USER: ${POSTGRES_USER:-streamroom}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - source: db_password
+        target: db_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.streamroom.storage == true
+      restart_policy:
+        condition: on-failure
+
+  owncast:
+    image: owncast/owncast:0.3.0
+    ports:
+      - target: 8080
+        published: 8081
+        protocol: tcp
+        mode: ingress
+      - target: 1935
+        published: 1935
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - owncast-data:/app/data
+    networks:
+      - owncast-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.streamroom.storage == true
+      restart_policy:
+        condition: on-failure
+
+  gateway:
+    image: ${GATEWAY_IMAGE:-streamroom-gateway:local}
+    ports:
+      - target: 80
+        published: 8080
+        protocol: tcp
+        mode: ingress
+    networks:
+      - frontend-net
+      - gateway-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+
+volumes:
+  postgres-data:
+    name: ${SWARM_POSTGRES_VOLUME:-streamroom-swarm-postgres-data}
+  owncast-data:
+    name: ${SWARM_OWNCAST_VOLUME:-streamroom-swarm-owncast-data}
+
+networks:
+  frontend-net:
+    driver: overlay
+    attachable: true
+  backend-net:
+    driver: overlay
+    internal: true
+    attachable: true
+  gateway-net:
+    driver: overlay
+    attachable: true
+  owncast-net:
+    driver: overlay
+    attachable: true
+
+secrets:
+  db_password:
+    external: true
+    name: streamroom_db_password

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="StreamRoom — учебная платформа для просмотра прямой трансляции.">
+    <title>StreamRoom</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/app.js" defer></script>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="#channel">StreamRoom</a>
+        <nav aria-label="Основная навигация">
+            <a href="#channel">Канал</a>
+            <a href="#account">Аккаунт</a>
+        </nav>
+    </header>
+
+    <main class="page-wrap">
+        <section class="channel panel" id="channel">
+            <div class="section-heading">
+                <div>
+                    <h1 id="channel-title">StreamRoom — прямой эфир</h1>
+                    <p id="channel-description" class="channel-description"></p>
+                </div>
+                <span class="status-pill status-unknown" id="channel-state">Проверка статуса</span>
+            </div>
+
+            <div class="player-layout">
+                <div class="video-frame-wrap">
+                    <iframe id="video-frame" title="Видеотрансляция" loading="lazy"
+                        referrerpolicy="origin" allow="autoplay; fullscreen; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>
+                <section class="chat-panel" aria-label="Чат трансляции">
+                    <div class="chat-heading">
+                        <h2>Чат</h2>
+                        <span id="chat-count" class="small-text">Сообщения обновляются автоматически</span>
+                    </div>
+                    <div id="chat-messages" class="chat-messages" role="log" aria-live="polite">
+                        <p class="chat-empty">Загрузка сообщений…</p>
+                    </div>
+                    <form id="chat-form" class="chat-form">
+                        <label for="chat-input">Сообщение</label>
+                        <textarea id="chat-input" maxlength="500" rows="2"
+                            placeholder="Войдите, чтобы отправлять сообщения" disabled></textarea>
+                        <div class="chat-form-footer">
+                            <span id="chat-hint" class="small-text">Читать чат можно без входа.</span>
+                            <button id="chat-send" type="submit" disabled>Отправить</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+
+            <div class="channel-footer">
+                <div class="channel-stats">
+                    <span>Зрителей: <strong id="viewer-count">—</strong></span>
+                    <span>Владелец: <strong id="channel-owner">—</strong></span>
+                    <span id="live-title" hidden></span>
+                </div>
+                <div class="channel-actions">
+                    <button id="refresh-channel" class="button-muted" type="button">Обновить</button>
+                    <a id="watch-link" class="text-link" href="http://localhost:8081"
+                       target="_blank" rel="noopener noreferrer">Открыть отдельно</a>
+                </div>
+            </div>
+            <p id="channel-message" class="inline-status" aria-live="polite"></p>
+            <p id="status-updated" class="small-text"></p>
+        </section>
+
+        <section class="panel account" id="account">
+            <div class="section-heading">
+                <h2>Аккаунт</h2>
+                <span class="status-pill" id="auth-state">Не выполнен вход</span>
+            </div>
+
+            <div class="form-grid">
+                <label>Имя пользователя
+                    <input id="username" autocomplete="username" minlength="3" maxlength="32"
+                        placeholder="Имя пользователя">
+                </label>
+                <label>Пароль
+                    <input id="password" type="password" autocomplete="current-password"
+                        minlength="8" maxlength="128" placeholder="Пароль">
+                </label>
+            </div>
+
+            <div class="button-row">
+                <button id="login" type="button">Войти</button>
+                <button id="register" class="button-muted" type="button">Регистрация</button>
+                <button id="logout" class="button-text" type="button" disabled>Выйти</button>
+            </div>
+            <p id="account-status" class="inline-status" aria-live="polite"></p>
+
+            <form id="channel-edit" class="channel-edit" hidden>
+                <h3>Настройки канала</h3>
+                <label>Название
+                    <input id="edit-channel-title" maxlength="100" required>
+                </label>
+                <label>Описание
+                    <textarea id="edit-channel-description" maxlength="500" rows="2"></textarea>
+                </label>
+                <button type="submit" id="save-channel">Сохранить</button>
+            </form>
+
+            <form id="transfer-ownership" class="channel-edit" hidden>
+                <h3>Передача прав владельца</h3>
+                <label>Имя пользователя нового владельца
+                    <input id="transfer-username" minlength="3" maxlength="32"
+                        pattern="[A-Za-z0-9_]+" placeholder="Имя пользователя" required>
+                </label>
+                <button type="submit" class="button-muted" id="transfer-button">Передать права</button>
+                <p class="small-text">После передачи вы станете обычным пользователем, а новый владелец получит доступ к настройкам и модерации чата.</p>
+            </form>
+        </section>
+    </main>
+
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+</body>
+</html>
